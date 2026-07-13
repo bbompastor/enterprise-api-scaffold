@@ -1,0 +1,13 @@
+replicaCount: 3
+
+image:
+  tag: prod
+
+env:
+  logLevel: info
+  name: prod
+  region: us-east-1
+
+autoscaling:
+  minReplicas: 3
+  maxReplicas: 20

@@ -1,0 +1,62 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/example/enterprise-api/api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+namespace:
+  create: true
+  name: enterprise-api
+  istioInjection: enabled
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+env:
+  logLevel: info
+  name: default
+  region: local
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  minAvailable: 1
+
+istio:
+  enabled: true
+  gateway:
+    hosts:
+      - api.enterprise.local
+    tlsCredentialName: api-tls
+  virtualService:
+    timeout: 10s
+    retries:
+      attempts: 3
+      perTryTimeout: 3s
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  labels:
+    release: prometheus

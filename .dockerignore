@@ -1,0 +1,9 @@
+deploy/
+.git/
+.github/
+README.md
+*.md
+tests/
+__pycache__/
+*.pyc
+.pytest_cache/

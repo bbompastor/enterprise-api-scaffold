@@ -1,0 +1,13 @@
+replicaCount: 1
+
+image:
+  tag: dev
+
+env:
+  logLevel: debug
+  name: dev
+  region: dev-region
+
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 3

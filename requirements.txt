@@ -1,0 +1,2 @@
+# No runtime dependencies — stdlib only.
+# Dev/test deps are installed in CI.
