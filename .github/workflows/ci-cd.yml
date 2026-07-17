@@ -158,6 +158,7 @@ jobs:
               --set env.region="dev-cluster" \
               --set istio.enabled=false \
               --set serviceMonitor.enabled=false \
+              --set namespace.create=false \
               --wait --timeout 5m
             
             echo "Verifying local deployment status..."
