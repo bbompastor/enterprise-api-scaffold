@@ -131,6 +131,15 @@ jobs:
         if: ${{ env.KUBECONFIG_B64 == '' }}
         uses: helm/kind-action@v1.9.0
 
+      - name: Install Istio and Prometheus CRDs on Kind
+        if: ${{ env.KUBECONFIG_B64 == '' }}
+        run: |
+          helm repo add istio https://istio.github.io/charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm install istio-base istio/base -n istio-system --create-namespace
+          helm install prometheus-crds prometheus-community/prometheus-operator-crds -n monitoring --create-namespace
+
       - name: Setup Helm
         if: ${{ env.KUBECONFIG_B64 != '' }}
         uses: azure/setup-helm@v4
@@ -156,8 +165,6 @@ jobs:
               --set image.tag="local" \
               --set image.pullPolicy="IfNotPresent" \
               --set env.region="dev-cluster" \
-              --set istio.enabled=false \
-              --set serviceMonitor.enabled=false \
               --set namespace.create=false \
               --wait --timeout 5m
             
