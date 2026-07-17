@@ -134,7 +134,7 @@ jobs:
       - name: Install Istio and Prometheus CRDs on Kind
         if: ${{ env.KUBECONFIG_B64 == '' }}
         run: |
-          helm repo add istio https://istio.github.io/charts
+          helm repo add istio https://istio-release.storage.googleapis.com/charts
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
           helm install istio-base istio/base -n istio-system --create-namespace
