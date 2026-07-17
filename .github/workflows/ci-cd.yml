@@ -122,28 +122,51 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     environment: development
+    env:
+      KUBECONFIG_B64: ${{ secrets.KUBECONFIG_DEV }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: azure/setup-helm@v4
+      - name: Create k8s Kind Cluster
+        if: ${{ env.KUBECONFIG_B64 == '' }}
+        uses: helm/kind-action@v1.9.0
+
+      - name: Setup Helm
+        if: ${{ env.KUBECONFIG_B64 != '' }}
+        uses: azure/setup-helm@v4
         with:
           version: ${{ env.HELM_VERSION }}
 
+      - name: Build and load local image to Kind (local validation fallback)
+        if: ${{ env.KUBECONFIG_B64 == '' }}
+        run: |
+          docker build -t api:local .
+          kind load docker-image api:local --name chart-testing
+
       - name: Deploy to dev cluster
-        env:
-          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_DEV }}
         run: |
           if [ -z "$KUBECONFIG_B64" ]; then
-            echo "WARNING: Secret 'KUBECONFIG_DEV' is not set."
-            echo "Skipping actual deployment and executing client-side template validation as a fallback."
-            helm template dev-api helm/api \
+            echo "Secret 'KUBECONFIG_DEV' is not set. Executing deployment validation on local Kind cluster."
+            helm upgrade --install dev-api helm/api \
               -f helm/api/values.yaml \
               -f helm/api/values-dev.yaml \
               --namespace enterprise-api \
-              --set image.repository="${{ env.IMAGE_NAME }}" \
-              --set image.tag="${{ needs.build-and-push.outputs.image_tag }}" \
-              --set env.region="dev-cluster"
+              --create-namespace \
+              --set image.repository="api" \
+              --set image.tag="local" \
+              --set image.pullPolicy="IfNotPresent" \
+              --set env.region="dev-cluster" \
+              --wait --timeout 5m
+            
+            echo "Verifying local deployment status..."
+            kubectl get pods -n enterprise-api
+            
+            # Start port-forwarding and test endpoint
+            kubectl port-forward service/dev-api -n enterprise-api 8080:80 &
+            sleep 5
+            curl -f http://localhost:8080/healthz
           else
+            echo "Secret 'KUBECONFIG_DEV' is set. Deploying to remote dev cluster."
             echo "$KUBECONFIG_B64" | base64 -d > kubeconfig
             chmod 600 kubeconfig
             export KUBECONFIG="$PWD/kubeconfig"
