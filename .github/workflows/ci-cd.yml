@@ -156,6 +156,8 @@ jobs:
               --set image.tag="local" \
               --set image.pullPolicy="IfNotPresent" \
               --set env.region="dev-cluster" \
+              --set istio.enabled=false \
+              --set serviceMonitor.enabled=false \
               --wait --timeout 5m
             
             echo "Verifying local deployment status..."
