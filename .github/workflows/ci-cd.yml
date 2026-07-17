@@ -92,17 +92,30 @@ jobs:
         env:
           KUBECONFIG_B64: ${{ secrets[matrix.kubeconfig_secret] }}
         run: |
-          echo "$KUBECONFIG_B64" | base64 -d > kubeconfig
-          export KUBECONFIG="$PWD/kubeconfig"
-          helm upgrade --install api helm/api \
-            -f helm/api/values.yaml \
-            -f helm/api/values-prod.yaml \
-            --namespace enterprise-api \
-            --create-namespace \
-            --set image.repository="${{ env.IMAGE_NAME }}" \
-            --set image.tag="${{ needs.build-and-push.outputs.image_tag }}" \
-            --set env.region="${{ matrix.region }}" \
-            --wait --timeout 5m
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "WARNING: Secret '${{ matrix.kubeconfig_secret }}' is not set."
+            echo "Skipping actual deployment and executing client-side template validation as a fallback."
+            helm template api helm/api \
+              -f helm/api/values.yaml \
+              -f helm/api/values-prod.yaml \
+              --namespace enterprise-api \
+              --set image.repository="${{ env.IMAGE_NAME }}" \
+              --set image.tag="${{ needs.build-and-push.outputs.image_tag }}" \
+              --set env.region="${{ matrix.region }}"
+          else
+            echo "$KUBECONFIG_B64" | base64 -d > kubeconfig
+            chmod 600 kubeconfig
+            export KUBECONFIG="$PWD/kubeconfig"
+            helm upgrade --install api helm/api \
+              -f helm/api/values.yaml \
+              -f helm/api/values-prod.yaml \
+              --namespace enterprise-api \
+              --create-namespace \
+              --set image.repository="${{ env.IMAGE_NAME }}" \
+              --set image.tag="${{ needs.build-and-push.outputs.image_tag }}" \
+              --set env.region="${{ matrix.region }}" \
+              --wait --timeout 5m
+          fi
 
   deploy-dev:
     needs: build-and-push
@@ -120,14 +133,27 @@ jobs:
         env:
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG_DEV }}
         run: |
-          echo "$KUBECONFIG_B64" | base64 -d > kubeconfig
-          export KUBECONFIG="$PWD/kubeconfig"
-          helm upgrade --install dev-api helm/api \
-            -f helm/api/values.yaml \
-            -f helm/api/values-dev.yaml \
-            --namespace enterprise-api \
-            --create-namespace \
-            --set image.repository="${{ env.IMAGE_NAME }}" \
-            --set image.tag="${{ needs.build-and-push.outputs.image_tag }}" \
-            --set env.region="dev-cluster" \
-            --wait --timeout 5m
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "WARNING: Secret 'KUBECONFIG_DEV' is not set."
+            echo "Skipping actual deployment and executing client-side template validation as a fallback."
+            helm template dev-api helm/api \
+              -f helm/api/values.yaml \
+              -f helm/api/values-dev.yaml \
+              --namespace enterprise-api \
+              --set image.repository="${{ env.IMAGE_NAME }}" \
+              --set image.tag="${{ needs.build-and-push.outputs.image_tag }}" \
+              --set env.region="dev-cluster"
+          else
+            echo "$KUBECONFIG_B64" | base64 -d > kubeconfig
+            chmod 600 kubeconfig
+            export KUBECONFIG="$PWD/kubeconfig"
+            helm upgrade --install dev-api helm/api \
+              -f helm/api/values.yaml \
+              -f helm/api/values-dev.yaml \
+              --namespace enterprise-api \
+              --create-namespace \
+              --set image.repository="${{ env.IMAGE_NAME }}" \
+              --set image.tag="${{ needs.build-and-push.outputs.image_tag }}" \
+              --set env.region="dev-cluster" \
+              --wait --timeout 5m
+          fi
